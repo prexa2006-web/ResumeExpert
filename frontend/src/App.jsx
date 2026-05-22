@@ -37,8 +37,10 @@ function App() {
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [activeInterviewCategory, setActiveInterviewCategory] = useState('behavioral');
 
-  // --- NAYA STATE OPTIMIZER KE LIYE ---
+  // --- OPTIMIZER / PDF STATES ---
   const [optimizedTextResult, setOptimizedTextResult] = useState("");
+  const [optimizedJsonData, setOptimizedJsonData] = useState(null);
+  const [isOptimizing, setIsOptimizing] = useState(false);
 
   // --- Handlers ---
   const handleFileSelect = (selectedFile) => {
@@ -142,10 +144,12 @@ function App() {
     }
   };
 
-  // --- NEW OPTIMIZER HANDLER (UPDATED) ---
+  // --- NEW OPTIMIZER HANDLER (Handles JSON for Om Solanki Template) ---
   const handleOptimize = async (mode) => {
     if (!file) return alert("Please upload a resume first!");
-    setOptimizedTextResult("Generating optimized text... Please wait.");
+    setIsOptimizing(true);
+    setOptimizedJsonData(null);
+    setOptimizedTextResult("Generating optimized professional resume format... Please wait.");
 
     const fd = new FormData();
     fd.append('file', file);
@@ -155,24 +159,49 @@ function App() {
     try {
       const res = await fetch('/optimize-resume', { method: 'POST', body: fd });
       const data = await res.json();
+      
       if (data.optimized_text) {
-        setOptimizedTextResult(data.optimized_text);
+        try {
+          const parsedData = JSON.parse(data.optimized_text);
+          setOptimizedJsonData(parsedData);
+          setOptimizedTextResult(""); // Clear text if JSON is successful
+        } catch (parseError) {
+          // Fallback to text if AI didn't return proper JSON
+          setOptimizedTextResult(data.optimized_text);
+        }
       } else {
         setOptimizedTextResult("Error: " + data.error);
       }
     } catch (err) {
-      setOptimizedTextResult("Optimization failed! Please check backend.");
+      setOptimizedTextResult("Optimization failed! Please check backend console.");
+    } finally {
+      setIsOptimizing(false);
     }
+  };
+
+  const handleDownloadPDF = () => {
+    window.print();
   };
 
   return (
     <div className="container" onClick={() => setIsExpMenuOpen(false)}>
-      <header>
+      
+      {/* CSS For Printing PDF cleanly */}
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          #printable-resume, #printable-resume * { visibility: visible; }
+          #printable-resume { position: absolute; left: 0; top: 0; width: 100%; padding: 0; margin: 0; background: white;}
+          .no-print { display: none !important; }
+        }
+      `}</style>
+
+      <header className="no-print">
         <h1 id="main-title">Smart Resume <span>Analyzer</span></h1>
         <p className="subtitle">AI-powered skill extraction, job matching & interview prep</p>
       </header>
 
-      <main>
+      <main className="no-print">
         {/* --- UPLOAD SECTION --- */}
         <section className="upload-section card">
           <div 
@@ -239,24 +268,25 @@ function App() {
         {/* --- RESULTS SECTION --- */}
         {results.skills && (
           <>
-            {/* NEW OPTIMIZER CARD (UPDATED) */}
+            {/* NEW OPTIMIZER SECTION WITH PDF GENERATOR */}
             <section id="optimizer-section">
               <div className="card mb-4" style={{border: '2px solid #a855f7'}}>
-                <h3>✨ Resume AI Editor</h3>
-                <p className="subtitle mt-1 mb-3">AI will rewrite your text. Copy the result back into your original format.</p>
+                <h3>✨ Resume AI Editor & PDF Generator</h3>
+                <p className="subtitle mt-1 mb-3">AI will rewrite your resume into a clean format with proper GitHub/Portfolio links.</p>
                 <div className="flex gap-4">
-                  <button className="btn btn-secondary" onClick={() => handleOptimize('keep_format')}>
-                    1. Polish Words Only (No Adding)
+                  <button className="btn btn-secondary" disabled={isOptimizing} onClick={() => handleOptimize('keep_format')}>
+                    {isOptimizing ? 'Generating...' : '1. Polish Words Only'}
                   </button>
-                  <button className="btn btn-primary" onClick={() => handleOptimize('enhance_content')}>
-                    2. Enhance & Add Keywords
+                  <button className="btn btn-primary" disabled={isOptimizing} onClick={() => handleOptimize('enhance_content')}>
+                    {isOptimizing ? 'Generating...' : '2. Enhance & Add Keywords'}
                   </button>
                 </div>
 
-                {optimizedTextResult && (
+                {/* Plain Text Fallback (In case AI fails to give JSON) */}
+                {optimizedTextResult && !optimizedJsonData && (
                   <div className="mt-4 p-4" style={{backgroundColor: '#1e1e2d', borderRadius: '8px'}}>
                     <div className="flex justify-between items-center mb-3">
-                        <h4 style={{margin: 0}}>Optimized Text Result:</h4>
+                        <h4 style={{margin: 0}}>Generated Text Result:</h4>
                         <button className="btn btn-secondary" style={{padding: '5px 12px', fontSize: '12px'}} 
                           onClick={() => {navigator.clipboard.writeText(optimizedTextResult); alert('Copied to clipboard!');}}>
                           Copy Text
@@ -541,6 +571,125 @@ function App() {
           </div>
         )}
       </main>
+
+      {/* --- HIDDEN PRINTABLE RESUME TEMPLATE (Only shows when optimized data is ready) --- */}
+      {optimizedJsonData && (
+        <div className="card mt-4 no-print" style={{ backgroundColor: '#fff', color: '#000' }}>
+          <div className="flex justify-between items-center mb-4">
+            <h3 style={{color: '#000', margin: 0}}>🖨️ Resume Ready!</h3>
+            <button className="btn btn-success" onClick={handleDownloadPDF} style={{padding: '8px 20px', fontWeight: 'bold'}}>
+              📥 Download as PDF
+            </button>
+          </div>
+          
+          <p className="text-muted mb-4">Here is your clean, formatted text. Click Download to save it as a professional PDF.</p>
+          
+          {/* THE ACTUAL RESUME LAYOUT (Used for Print) */}
+          <div id="printable-resume" style={{ padding: '40px', fontFamily: '"Arial", sans-serif', maxWidth: '800px', margin: '0 auto', border: '1px solid #ccc' }}>
+            
+            {/* Header */}
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <h1 style={{ margin: '0 0 10px 0', fontSize: '28px', color: '#111', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                {optimizedJsonData.personal_info?.name || "Your Name"}
+              </h1>
+              <div style={{ fontSize: '14px', color: '#444', marginBottom: '8px' }}>
+                {optimizedJsonData.personal_info?.email} • {optimizedJsonData.personal_info?.phone} • {optimizedJsonData.personal_info?.location}
+              </div>
+              <div style={{ fontSize: '14px', marginTop: '5px' }}>
+                {optimizedJsonData.personal_info?.linkedin && <a href={optimizedJsonData.personal_info.linkedin} style={{color: '#0066cc', textDecoration: 'none', marginRight: '15px'}}>LinkedIn</a>}
+                {optimizedJsonData.personal_info?.github && <a href={optimizedJsonData.personal_info.github} style={{color: '#0066cc', textDecoration: 'none', marginRight: '15px'}}>GitHub</a>}
+                {optimizedJsonData.personal_info?.portfolio && <a href={optimizedJsonData.personal_info.portfolio} style={{color: '#0066cc', textDecoration: 'none'}}>Portfolio</a>}
+              </div>
+            </div>
+
+            {/* Summary */}
+            {optimizedJsonData.summary && (
+              <div style={{ marginBottom: '20px' }}>
+                <p style={{ fontSize: '14px', lineHeight: '1.5', color: '#333' }}>{optimizedJsonData.summary}</p>
+              </div>
+            )}
+
+            {/* Education */}
+            {optimizedJsonData.education && optimizedJsonData.education.length > 0 && (
+              <div style={{ marginBottom: '20px' }}>
+                <h3 style={{ borderBottom: '2px solid #222', paddingBottom: '3px', marginBottom: '10px', fontSize: '16px', color: '#111', textTransform: 'uppercase' }}>Education</h3>
+                {optimizedJsonData.education.map((edu, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
+                    <div>
+                      <strong style={{color: '#000'}}>{edu.degree}</strong> <br/> 
+                      <span style={{color: '#444'}}>{edu.institution}</span>
+                    </div>
+                    <div style={{ textAlign: 'right', color: '#444' }}>
+                      {edu.year} <br/> 
+                      {edu.score}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Skills */}
+            {optimizedJsonData.skills && optimizedJsonData.skills.length > 0 && (
+              <div style={{ marginBottom: '20px' }}>
+                <h3 style={{ borderBottom: '2px solid #222', paddingBottom: '3px', marginBottom: '10px', fontSize: '16px', color: '#111', textTransform: 'uppercase' }}>Skills</h3>
+                {optimizedJsonData.skills.map((skill, idx) => (
+                  <div key={idx} style={{ fontSize: '14px', marginBottom: '6px' }}>
+                    <strong style={{color: '#000'}}>{skill.category}:</strong> <span style={{color: '#333'}}>{skill.items}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Projects */}
+            {optimizedJsonData.projects && optimizedJsonData.projects.length > 0 && (
+              <div style={{ marginBottom: '20px' }}>
+                <h3 style={{ borderBottom: '2px solid #222', paddingBottom: '3px', marginBottom: '10px', fontSize: '16px', color: '#111', textTransform: 'uppercase' }}>Projects</h3>
+                {optimizedJsonData.projects.map((proj, idx) => (
+                  <div key={idx} style={{ marginBottom: '15px', fontSize: '14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                      <strong style={{color: '#000'}}>{proj.name}</strong>
+                      {proj.link && <a href={proj.link} style={{color: '#0066cc', textDecoration: 'none'}}>View</a>}
+                    </div>
+                    <div style={{ fontStyle: 'italic', fontSize: '13px', color: '#555', marginBottom: '6px' }}>{proj.tech_stack}</div>
+                    <p style={{ margin: '0', lineHeight: '1.5', color: '#333' }}>{proj.description}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Experience */}
+            {optimizedJsonData.experience && optimizedJsonData.experience.length > 0 && (
+              <div style={{ marginBottom: '20px' }}>
+                <h3 style={{ borderBottom: '2px solid #222', paddingBottom: '3px', marginBottom: '10px', fontSize: '16px', color: '#111', textTransform: 'uppercase' }}>Experience</h3>
+                {optimizedJsonData.experience.map((exp, idx) => (
+                  <div key={idx} style={{ marginBottom: '15px', fontSize: '14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                      <strong style={{color: '#000'}}>{exp.role}</strong>
+                      <span style={{color: '#444'}}>{exp.duration}</span>
+                    </div>
+                    <div style={{ fontStyle: 'italic', marginBottom: '6px', color: '#555' }}>{exp.company}</div>
+                    <p style={{ margin: '0', lineHeight: '1.5', color: '#333' }}>{exp.description}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Certifications & Extra Activities */}
+            {optimizedJsonData.certifications && optimizedJsonData.certifications.length > 0 && (
+              <div style={{ marginBottom: '20px' }}>
+                <h3 style={{ borderBottom: '2px solid #222', paddingBottom: '3px', marginBottom: '10px', fontSize: '16px', color: '#111', textTransform: 'uppercase' }}>Certifications & Extra Activities</h3>
+                <ul style={{ margin: '0', paddingLeft: '20px', fontSize: '14px', color: '#333', lineHeight: '1.6' }}>
+                  {optimizedJsonData.certifications.map((cert, idx) => (
+                    <li key={idx} style={{ marginBottom: '4px' }}>{cert}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
