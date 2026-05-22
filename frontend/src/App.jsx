@@ -37,6 +37,9 @@ function App() {
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [activeInterviewCategory, setActiveInterviewCategory] = useState('behavioral');
 
+  // --- NAYA STATE OPTIMIZER KE LIYE ---
+  const [optimizedTextResult, setOptimizedTextResult] = useState("");
+
   // --- Handlers ---
   const handleFileSelect = (selectedFile) => {
     if (selectedFile && selectedFile.type === 'application/pdf') {
@@ -139,6 +142,29 @@ function App() {
     }
   };
 
+  // --- NEW OPTIMIZER HANDLER (UPDATED) ---
+  const handleOptimize = async (mode) => {
+    if (!file) return alert("Please upload a resume first!");
+    setOptimizedTextResult("Generating optimized text... Please wait.");
+
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('mode', mode);
+    fd.append('target_role', role);
+    
+    try {
+      const res = await fetch('/optimize-resume', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.optimized_text) {
+        setOptimizedTextResult(data.optimized_text);
+      } else {
+        setOptimizedTextResult("Error: " + data.error);
+      }
+    } catch (err) {
+      setOptimizedTextResult("Optimization failed! Please check backend.");
+    }
+  };
+
   return (
     <div className="container" onClick={() => setIsExpMenuOpen(false)}>
       <header>
@@ -212,14 +238,47 @@ function App() {
 
         {/* --- RESULTS SECTION --- */}
         {results.skills && (
-          <section id="skills-section">
-            <div className="card">
-              <h3>🛠️ Extracted Skills</h3>
-              <div className="tags">
-                {results.skills.map((s, i) => <span key={i} className="tag">{s}</span>)}
+          <>
+            {/* NEW OPTIMIZER CARD (UPDATED) */}
+            <section id="optimizer-section">
+              <div className="card mb-4" style={{border: '2px solid #a855f7'}}>
+                <h3>✨ Resume AI Editor</h3>
+                <p className="subtitle mt-1 mb-3">AI will rewrite your text. Copy the result back into your original format.</p>
+                <div className="flex gap-4">
+                  <button className="btn btn-secondary" onClick={() => handleOptimize('keep_format')}>
+                    1. Polish Words Only (No Adding)
+                  </button>
+                  <button className="btn btn-primary" onClick={() => handleOptimize('enhance_content')}>
+                    2. Enhance & Add Keywords
+                  </button>
+                </div>
+
+                {optimizedTextResult && (
+                  <div className="mt-4 p-4" style={{backgroundColor: '#1e1e2d', borderRadius: '8px'}}>
+                    <div className="flex justify-between items-center mb-3">
+                        <h4 style={{margin: 0}}>Optimized Text Result:</h4>
+                        <button className="btn btn-secondary" style={{padding: '5px 12px', fontSize: '12px'}} 
+                          onClick={() => {navigator.clipboard.writeText(optimizedTextResult); alert('Copied to clipboard!');}}>
+                          Copy Text
+                        </button>
+                    </div>
+                    <pre style={{whiteSpace: 'pre-wrap', wordWrap: 'break-word', fontFamily: 'inherit', fontSize: '14px', lineHeight: '1.6'}}>
+                      {optimizedTextResult}
+                    </pre>
+                  </div>
+                )}
               </div>
-            </div>
-          </section>
+            </section>
+
+            <section id="skills-section">
+              <div className="card">
+                <h3>🛠️ Extracted Skills</h3>
+                <div className="tags">
+                  {results.skills.map((s, i) => <span key={i} className="tag">{s}</span>)}
+                </div>
+              </div>
+            </section>
+          </>
         )}
 
         {results.jobsData && (
@@ -261,7 +320,6 @@ function App() {
             )}
 
             {/* TAB: ROAST (WITH RADAR CHART) */}
-            {/* TAB: ROAST (WITH RADAR CHART) */}
             {activeTab === 'roast' && results.roastData && (
               <div className="tab-panel active">
                 
@@ -296,7 +354,7 @@ function App() {
                   <div className="roast-callout mt-6"><p>🔥 {results.roastData.roast}</p></div>
                 </div>
 
-                {/* --- RESTORED: Strengths --- */}
+                {/* --- Strengths --- */}
                 {results.roastData.strengths?.length > 0 && (
                   <div className="card mt-4">
                     <h3>💪 Strengths</h3>
@@ -319,7 +377,7 @@ function App() {
                   </div>
                 )}
 
-                {/* --- RESTORED: Missing Sections --- */}
+                {/* --- Missing Sections --- */}
                 {results.roastData.missing_sections?.length > 0 && (
                   <div className="card mt-4">
                     <h3>⚠️ Missing Sections</h3>
@@ -329,7 +387,7 @@ function App() {
                   </div>
                 )}
 
-                {/* --- RESTORED: Cliches Found --- */}
+                {/* --- Cliches Found --- */}
                 {results.roastData.cliches_found?.length > 0 && (
                   <div className="card mt-4">
                     <h3>🚫 Clichés Found</h3>
@@ -339,7 +397,7 @@ function App() {
                   </div>
                 )}
 
-                {/* --- RESTORED: Tailored Cover Letter --- */}
+                {/* --- Tailored Cover Letter --- */}
                 {results.roastData.cover_letter && (
                   <div className="card mt-4">
                     <h3>✉️ Tailored Cover Letter</h3>
@@ -375,7 +433,7 @@ function App() {
                   <>
                     <div className="card mt-4">
                       
-                      {/* --- NEW: Donut Chart --- */}
+                      {/* --- Donut Chart --- */}
                       <div className="flex flex-col items-center justify-center mt-4" style={{ position: 'relative' }}>
                         <h3 className="mb-0">ATS Match Score</h3>
                         <div style={{ width: '100%', height: 250 }}>
@@ -415,7 +473,7 @@ function App() {
                       </div>
                     </div>
                     
-                    {/* --- RESTORED: Culture Fit --- */}
+                    {/* --- Culture Fit --- */}
                     {results.jdData.culture_fit_analysis && (
                       <div className="card mt-4">
                         <h3>🏢 Culture & Experience Fit</h3>
@@ -423,7 +481,7 @@ function App() {
                       </div>
                     )}
 
-                    {/* --- RESTORED: Bullet Suggestions --- */}
+                    {/* --- Bullet Suggestions --- */}
                     {results.jdData.bullet_suggestions?.length > 0 && (
                       <div className="card mt-4">
                         <h3>📝 Resume Tailoring Suggestions</h3>

@@ -5,7 +5,7 @@ from typing import Optional
 import uvicorn
 import shutil
 import os
-
+from utils.resume_optimizer import optimize_text
 from utils.pdf_parser import extract_text_from_pdf
 from utils.skill_extractor import extract_skills
 from utils.ai_feedback import get_ai_feedback
@@ -33,7 +33,7 @@ async def match_jd_endpoint(
 
 @app.get("/", response_class=HTMLResponse)
 async def read_index():
-    return FileResponse("static/index.html")
+    return FileResponse("frontend/index.html")
 
 
 @app.post("/analyze")
@@ -146,6 +146,28 @@ async def evaluate_answer_endpoint(
 ):
     result = evaluate_answer(question, user_answer, resume_text)
     return result
+
+# --- NAYA ROUTE YAHAN SAHI JAGAH PAR RAKHA GAYA HAI ---
+@app.post("/optimize-resume")
+async def optimize_resume_endpoint(
+    file: UploadFile = File(...),
+    mode: str = Form(...),
+    target_role: Optional[str] = Form("")
+):
+    temp_file = f"temp_{file.filename}"
+    with open(temp_file, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    try:
+        resume_text = extract_text_from_pdf(temp_file)
+        if not resume_text:
+            return {"error": "Failed to extract text."}
+            
+        optimized_text = optimize_text(resume_text, mode, target_role)
+        return {"optimized_text": optimized_text}
+    finally:
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
 
 
 if __name__ == "__main__":

@@ -11,7 +11,8 @@ export default defineConfig({
       '/roast': 'http://localhost:8000',
       '/interview-prep': 'http://localhost:8000',
       '/evaluate-answer': 'http://localhost:8000',
-      '/match-jd': 'http://localhost:8000'
+      '/match-jd': 'http://localhost:8000',
+      '/optimize-resume': 'http://127.0.0.1:8000'
     }
   }
 })
