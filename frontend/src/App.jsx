@@ -183,16 +183,29 @@ function App() {
     window.print();
   };
 
+  // Helper function to safely render links
+  const renderLink = (url, label) => {
+    if (!url) return null;
+    const safeUrl = url.startsWith('http') ? url : `https://${url}`;
+    return (
+      <a href={safeUrl} target="_blank" rel="noreferrer" style={{color: '#0066cc', textDecoration: 'none', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px'}}>
+        🔗 {label}
+      </a>
+    );
+  };
+
   return (
     <div className="container" onClick={() => setIsExpMenuOpen(false)}>
       
-      {/* CSS For Printing PDF cleanly */}
+      {/* FIXED PRINT CSS: Hides everything except the printable resume */}
       <style>{`
         @media print {
-          body * { visibility: hidden; }
-          #printable-resume, #printable-resume * { visibility: visible; }
-          #printable-resume { position: absolute; left: 0; top: 0; width: 100%; padding: 0; margin: 0; background: white;}
+          body, html { background: white !important; color: black !important; }
           .no-print { display: none !important; }
+          .container { max-width: 100% !important; padding: 0 !important; margin: 0 !important; background: white !important; }
+          #printable-resume-wrapper { display: block !important; width: 100%; margin: 0; padding: 0; }
+          #printable-resume { border: none !important; padding: 10px !important; margin: 0 !important; box-shadow: none !important; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
       `}</style>
 
@@ -572,57 +585,61 @@ function App() {
         )}
       </main>
 
-      {/* --- HIDDEN PRINTABLE RESUME TEMPLATE (Only shows when optimized data is ready) --- */}
+      {/* --- PRINTABLE RESUME WRAPPER --- */}
       {optimizedJsonData && (
-        <div className="card mt-4 no-print" style={{ backgroundColor: '#fff', color: '#000' }}>
-          <div className="flex justify-between items-center mb-4">
-            <h3 style={{color: '#000', margin: 0}}>🖨️ Resume Ready!</h3>
-            <button className="btn btn-success" onClick={handleDownloadPDF} style={{padding: '8px 20px', fontWeight: 'bold'}}>
-              📥 Download as PDF
-            </button>
+        <div id="printable-resume-wrapper" className="mt-4">
+          
+          <div className="card no-print mb-4" style={{ backgroundColor: '#1e1e2d', border: '1px solid #10b981' }}>
+            <div className="flex justify-between items-center">
+              <h3 style={{color: '#10b981', margin: 0}}>✅ Resume Ready for Download!</h3>
+              <button className="btn btn-success" onClick={handleDownloadPDF} style={{padding: '8px 20px', fontWeight: 'bold'}}>
+                📥 Download as PDF
+              </button>
+            </div>
+            <p className="text-muted mt-2 mb-0">Preview your resume below. Click the download button to save it (only the white document will print).</p>
           </div>
           
-          <p className="text-muted mb-4">Here is your clean, formatted text. Click Download to save it as a professional PDF.</p>
-          
-          {/* THE ACTUAL RESUME LAYOUT (Used for Print) */}
-          <div id="printable-resume" style={{ padding: '40px', fontFamily: '"Arial", sans-serif', maxWidth: '800px', margin: '0 auto', border: '1px solid #ccc' }}>
+          {/* THE ACTUAL RESUME LAYOUT */}
+          <div id="printable-resume" style={{ 
+            padding: '40px', fontFamily: '"Arial", sans-serif', maxWidth: '850px', margin: '0 auto', 
+            backgroundColor: '#ffffff', color: '#000000', border: '1px solid #ccc', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+          }}>
             
             {/* Header */}
-            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-              <h1 style={{ margin: '0 0 10px 0', fontSize: '28px', color: '#111', textTransform: 'uppercase', fontWeight: 'bold' }}>
+            <div style={{ textAlign: 'center', marginBottom: '25px', borderBottom: '2px solid #222', paddingBottom: '15px' }}>
+              <h1 style={{ margin: '0 0 8px 0', fontSize: '32px', color: '#111', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '1px' }}>
                 {optimizedJsonData.personal_info?.name || "Your Name"}
               </h1>
-              <div style={{ fontSize: '14px', color: '#444', marginBottom: '8px' }}>
-                {optimizedJsonData.personal_info?.email} • {optimizedJsonData.personal_info?.phone} • {optimizedJsonData.personal_info?.location}
+              
+              <div style={{ fontSize: '15px', color: '#333', marginBottom: '10px' }}>
+                {optimizedJsonData.personal_info?.email && <span>✉️ {optimizedJsonData.personal_info.email} &nbsp;|&nbsp; </span>}
+                {optimizedJsonData.personal_info?.phone && <span>📞 {optimizedJsonData.personal_info.phone} &nbsp;|&nbsp; </span>}
+                {optimizedJsonData.personal_info?.location && <span>📍 {optimizedJsonData.personal_info.location}</span>}
               </div>
-              <div style={{ fontSize: '14px', marginTop: '5px' }}>
-                {optimizedJsonData.personal_info?.linkedin && <a href={optimizedJsonData.personal_info.linkedin} style={{color: '#0066cc', textDecoration: 'none', marginRight: '15px'}}>LinkedIn</a>}
-                {optimizedJsonData.personal_info?.github && <a href={optimizedJsonData.personal_info.github} style={{color: '#0066cc', textDecoration: 'none', marginRight: '15px'}}>GitHub</a>}
-                {optimizedJsonData.personal_info?.portfolio && <a href={optimizedJsonData.personal_info.portfolio} style={{color: '#0066cc', textDecoration: 'none'}}>Portfolio</a>}
+              
+              {/* Clickable Links Section */}
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap', marginTop: '10px' }}>
+                {renderLink(optimizedJsonData.personal_info?.linkedin, 'LinkedIn')}
+                {renderLink(optimizedJsonData.personal_info?.github, 'GitHub')}
+                {renderLink(optimizedJsonData.personal_info?.portfolio, 'Portfolio')}
               </div>
             </div>
 
             {/* Summary */}
             {optimizedJsonData.summary && (
               <div style={{ marginBottom: '20px' }}>
-                <p style={{ fontSize: '14px', lineHeight: '1.5', color: '#333' }}>{optimizedJsonData.summary}</p>
+                <p style={{ fontSize: '15px', lineHeight: '1.6', color: '#222', textAlign: 'justify' }}>{optimizedJsonData.summary}</p>
               </div>
             )}
 
             {/* Education */}
             {optimizedJsonData.education && optimizedJsonData.education.length > 0 && (
-              <div style={{ marginBottom: '20px' }}>
-                <h3 style={{ borderBottom: '2px solid #222', paddingBottom: '3px', marginBottom: '10px', fontSize: '16px', color: '#111', textTransform: 'uppercase' }}>Education</h3>
+              <div style={{ marginBottom: '25px' }}>
+                <h3 style={{ backgroundColor: '#f0f0f0', padding: '5px 10px', marginBottom: '15px', fontSize: '16px', color: '#111', textTransform: 'uppercase', letterSpacing: '1px' }}>Education</h3>
                 {optimizedJsonData.education.map((edu, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
-                    <div>
-                      <strong style={{color: '#000'}}>{edu.degree}</strong> <br/> 
-                      <span style={{color: '#444'}}>{edu.institution}</span>
-                    </div>
-                    <div style={{ textAlign: 'right', color: '#444' }}>
-                      {edu.year} <br/> 
-                      {edu.score}
-                    </div>
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '15px' }}>
+                    <div><strong style={{color: '#000'}}>{edu.degree}</strong> <br/> <span style={{color: '#444', fontStyle: 'italic'}}>{edu.institution}</span></div>
+                    <div style={{ textAlign: 'right', color: '#333' }}><strong>{edu.year}</strong> <br/> {edu.score}</div>
                   </div>
                 ))}
               </div>
@@ -630,10 +647,10 @@ function App() {
 
             {/* Skills */}
             {optimizedJsonData.skills && optimizedJsonData.skills.length > 0 && (
-              <div style={{ marginBottom: '20px' }}>
-                <h3 style={{ borderBottom: '2px solid #222', paddingBottom: '3px', marginBottom: '10px', fontSize: '16px', color: '#111', textTransform: 'uppercase' }}>Skills</h3>
+              <div style={{ marginBottom: '25px' }}>
+                <h3 style={{ backgroundColor: '#f0f0f0', padding: '5px 10px', marginBottom: '15px', fontSize: '16px', color: '#111', textTransform: 'uppercase', letterSpacing: '1px' }}>Skills</h3>
                 {optimizedJsonData.skills.map((skill, idx) => (
-                  <div key={idx} style={{ fontSize: '14px', marginBottom: '6px' }}>
+                  <div key={idx} style={{ fontSize: '15px', marginBottom: '8px', lineHeight: '1.4' }}>
                     <strong style={{color: '#000'}}>{skill.category}:</strong> <span style={{color: '#333'}}>{skill.items}</span>
                   </div>
                 ))}
@@ -642,16 +659,16 @@ function App() {
 
             {/* Projects */}
             {optimizedJsonData.projects && optimizedJsonData.projects.length > 0 && (
-              <div style={{ marginBottom: '20px' }}>
-                <h3 style={{ borderBottom: '2px solid #222', paddingBottom: '3px', marginBottom: '10px', fontSize: '16px', color: '#111', textTransform: 'uppercase' }}>Projects</h3>
+              <div style={{ marginBottom: '25px' }}>
+                <h3 style={{ backgroundColor: '#f0f0f0', padding: '5px 10px', marginBottom: '15px', fontSize: '16px', color: '#111', textTransform: 'uppercase', letterSpacing: '1px' }}>Projects</h3>
                 {optimizedJsonData.projects.map((proj, idx) => (
-                  <div key={idx} style={{ marginBottom: '15px', fontSize: '14px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                      <strong style={{color: '#000'}}>{proj.name}</strong>
-                      {proj.link && <a href={proj.link} style={{color: '#0066cc', textDecoration: 'none'}}>View</a>}
+                  <div key={idx} style={{ marginBottom: '18px', fontSize: '15px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px' }}>
+                      <strong style={{color: '#000', fontSize: '16px'}}>{proj.name}</strong>
+                      {proj.link && <a href={proj.link.startsWith('http') ? proj.link : `https://${proj.link}`} target="_blank" rel="noreferrer" style={{color: '#0066cc', textDecoration: 'none', fontSize: '14px', fontWeight: 'bold'}}>🔗 View Project</a>}
                     </div>
-                    <div style={{ fontStyle: 'italic', fontSize: '13px', color: '#555', marginBottom: '6px' }}>{proj.tech_stack}</div>
-                    <p style={{ margin: '0', lineHeight: '1.5', color: '#333' }}>{proj.description}</p>
+                    <div style={{ fontStyle: 'italic', fontSize: '14px', color: '#555', marginBottom: '8px' }}>Tech Stack: {proj.tech_stack}</div>
+                    <p style={{ margin: '0', lineHeight: '1.6', color: '#222', textAlign: 'justify' }}>{proj.description}</p>
                   </div>
                 ))}
               </div>
@@ -659,28 +676,28 @@ function App() {
 
             {/* Experience */}
             {optimizedJsonData.experience && optimizedJsonData.experience.length > 0 && (
-              <div style={{ marginBottom: '20px' }}>
-                <h3 style={{ borderBottom: '2px solid #222', paddingBottom: '3px', marginBottom: '10px', fontSize: '16px', color: '#111', textTransform: 'uppercase' }}>Experience</h3>
+              <div style={{ marginBottom: '25px' }}>
+                <h3 style={{ backgroundColor: '#f0f0f0', padding: '5px 10px', marginBottom: '15px', fontSize: '16px', color: '#111', textTransform: 'uppercase', letterSpacing: '1px' }}>Experience</h3>
                 {optimizedJsonData.experience.map((exp, idx) => (
-                  <div key={idx} style={{ marginBottom: '15px', fontSize: '14px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                      <strong style={{color: '#000'}}>{exp.role}</strong>
-                      <span style={{color: '#444'}}>{exp.duration}</span>
+                  <div key={idx} style={{ marginBottom: '18px', fontSize: '15px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px' }}>
+                      <strong style={{color: '#000', fontSize: '16px'}}>{exp.role}</strong>
+                      <span style={{color: '#333', fontWeight: 'bold'}}>{exp.duration}</span>
                     </div>
-                    <div style={{ fontStyle: 'italic', marginBottom: '6px', color: '#555' }}>{exp.company}</div>
-                    <p style={{ margin: '0', lineHeight: '1.5', color: '#333' }}>{exp.description}</p>
+                    <div style={{ fontStyle: 'italic', marginBottom: '8px', color: '#555' }}>{exp.company}</div>
+                    <p style={{ margin: '0', lineHeight: '1.6', color: '#222', textAlign: 'justify' }}>{exp.description}</p>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Certifications & Extra Activities */}
+            {/* Certifications */}
             {optimizedJsonData.certifications && optimizedJsonData.certifications.length > 0 && (
-              <div style={{ marginBottom: '20px' }}>
-                <h3 style={{ borderBottom: '2px solid #222', paddingBottom: '3px', marginBottom: '10px', fontSize: '16px', color: '#111', textTransform: 'uppercase' }}>Certifications & Extra Activities</h3>
-                <ul style={{ margin: '0', paddingLeft: '20px', fontSize: '14px', color: '#333', lineHeight: '1.6' }}>
+              <div style={{ marginBottom: '10px' }}>
+                <h3 style={{ backgroundColor: '#f0f0f0', padding: '5px 10px', marginBottom: '15px', fontSize: '16px', color: '#111', textTransform: 'uppercase', letterSpacing: '1px' }}>Certifications & Extra Activities</h3>
+                <ul style={{ margin: '0', paddingLeft: '25px', fontSize: '15px', color: '#222', lineHeight: '1.7' }}>
                   {optimizedJsonData.certifications.map((cert, idx) => (
-                    <li key={idx} style={{ marginBottom: '4px' }}>{cert}</li>
+                    <li key={idx} style={{ marginBottom: '6px' }}>{cert}</li>
                   ))}
                 </ul>
               </div>

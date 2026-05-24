@@ -1,15 +1,53 @@
 from utils import llm
+import json
 
 def optimize_text(resume_text, mode, target_role):
-    if mode == "keep_format":
-        # Option 1: Sirf words change honge, naya kuch add nahi hoga
-        prompt = f"""You are an expert resume editor. Rewrite the following resume text to improve grammar, clarity, and professional impact. 
-        CRITICAL RULE: DO NOT add any new skills, new job experiences, or new sections. Keep the exact original meaning, just use better professional vocabulary.
-        Resume Text: {resume_text}"""
-    else:
-        # Option 2: Naye keywords aur text add kar sakte hain
-        prompt = f"""You are an expert resume writer. Rewrite and optimize this resume for a {target_role} role. 
-        You ARE ALLOWED to add relevant industry keywords, professional phrases, and standard skills that match the target role to make it more ATS friendly.
-        Resume Text: {resume_text}"""
+    prompt = f"""You are an expert ATS Resume Writer. Analyze the provided resume text and rewrite it into a highly professional format.
     
-    return llm.ask(prompt)
+    CRITICAL INSTRUCTIONS FOR LINKS:
+    If you find a GitHub, LinkedIn, or Portfolio username/link, you MUST convert it into a FULL valid URL starting with 'https://'. 
+    Example: 'omsolanki1311' should become 'https://github.com/omsolanki1311'. Do NOT just return text.
+    
+    EXPECTED JSON STRUCTURE:
+    {{
+        "personal_info": {{
+            "name": "Full Name",
+            "email": "Email Address",
+            "phone": "Phone Number",
+            "location": "City, Country",
+            "linkedin": "FULL HTTPS URL (if any)",
+            "github": "FULL HTTPS URL (if any)",
+            "portfolio": "FULL HTTPS URL (if any, separate from Github)"
+        }},
+        "summary": "A strong professional summary...",
+        "education": [
+            {{"degree": "Degree Name", "institution": "College Name", "year": "Year", "score": "Grade/Percentage"}}
+        ],
+        "skills": [
+            {{"category": "Languages", "items": "Python, Java, etc."}}
+        ],
+        "projects": [
+            {{"name": "Project Name", "tech_stack": "React, Node, etc.", "description": "1-2 lines explaining what it does and impact", "link": "FULL HTTPS URL for project (if any)"}}
+        ],
+        "experience": [
+            {{"role": "Job Title", "company": "Company Name", "duration": "Dates", "description": "Bullet points..."}}
+        ],
+        "certifications": ["Cert 1", "Cert 2"]
+    }}
+    """
+    
+    if mode == "keep_format":
+        prompt += f"\n\nRULE: Polish the grammar and vocabulary, but DO NOT add any new skills, projects, or experiences that are not in the original text.\n\nOriginal Resume:\n{resume_text}"
+    else:
+        prompt += f"\n\nRULE: Enhance the content and ADD highly relevant industry keywords for a '{target_role}' role to boost the ATS score.\n\nOriginal Resume:\n{resume_text}"
+    
+    response = llm.ask(prompt)
+    
+    try:
+        if "```json" in response:
+            response = response.split("```json")[1].split("```")[0].strip()
+        elif "```" in response:
+            response = response.split("```")[1].split("```")[0].strip()
+        return response
+    except Exception as e:
+        return response
